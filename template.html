@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+
+    <title>{{ family }}</title>
+
+    <style>
+      .guanine {
+        background-color: rgb(255, 192, 203);
+      }
+      .uracil {
+        background-color: rgb(255, 247, 61);
+      }
+      .adenine {
+        background-color: rgb(118, 208, 233);
+      }
+      .cytosine {
+        background-color: rgb(255, 247, 61);
+      }
+      .table td {
+        padding: 0 5px;
+      }
+    </style>
+
+  </head>
+  <body>
+    <h1>{{ family }}</h1>
+
+    <table class="table table-striped table-borderless table-hover table-sm table-responsive">
+    {% for row, metadata in zip(align, species) %}
+      <tr>
+        <td style="white-space: nowrap;" class="small">{{ row.name }}</td>
+        <td><strong>{{ metadata.bits }}</strong></td>
+        {% if metadata.seqLabel == 'SEED' %}
+          <td><span class="badge badge-success">{{ metadata.seqLabel }}</span></td>
+        {% else %}
+          <td class="text-muted">{{ metadata.seqLabel }}</td>
+        {% endif %}
+        <td class="text-monospace" style="display: inline-flex;">
+          {% for nt in row.sequence_split %}
+            {% if nt == 'A' %}
+              <span class="adenine">A</span>
+            {% elif nt == 'G' %}
+              <span class="guanine">G</span>
+            {% elif nt == 'C' %}
+              <span class="cytosine">C</span>
+            {% elif nt == 'U' %}
+              <span class="uracil">U</span>
+            {% else %}
+              {{ nt }}
+            {% endif %}
+          {% endfor %}
+        </td>
+        <td style="white-space: nowrap;" class="small">{{ metadata.taxString }}</td>
+      </tr>
+    {% endfor %}
+      <tr>
+        <td>Consensus structure</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td class="text-monospace"><strong>{{ ss_cons }}</strong></td>
+      </tr>
+    </table>
+
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+  </body>
+</html>
