@@ -34,8 +34,8 @@
     <div class="container-fluid" style="margin-bottom: 10px;">
       <h1>{{ family }}</h1>
 
-      <button class="btn btn-outline-success btn-sm" onclick="document.getElementById('gathering-cutoff').scrollIntoView({behavior: 'smooth'})">Gathering cutoff</button>
-      <button class="btn btn-outline-danger btn-sm" onclick="document.getElementById('best-reversed-hit').scrollIntoView({behavior: 'smooth'})">Best reversed</button>
+      <button class="btn btn-outline-success btn-sm" onclick="document.getElementById('gathering-cutoff').scrollIntoView({behavior: 'smooth'})">✅ Gathering cutoff</button>
+      <button class="btn btn-outline-danger btn-sm" onclick="document.getElementById('best-reversed-hit').scrollIntoView({behavior: 'smooth'})">🛑 Best reversed</button>
       <button class="btn btn-outline-dark btn-sm" onclick="document.getElementById('last-hit').scrollIntoView({behavior: 'smooth'})">Last hit</button>
 
       <p class="text-muted">
@@ -44,14 +44,17 @@
     </div>
 
     <table class="table table-striped table-borderless table-hover table-sm table-responsive">
-      <tr>
-        <td>Consensus structure</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
-        <td class="text-monospace"><strong>{{ ss_cons }}</strong></td>
-        <td>&nbsp;</td>
-      </tr>
-    {% for species_row, outlist_row in zip(species, outlist) %}
+      <thead>
+        <tr>
+          <th>Consensus structure</th>
+          <th>&nbsp;</th>
+          <th>&nbsp;</th>
+          <th class="text-monospace"><strong>{{ ss_cons }}</strong></th>
+          <th>&nbsp;</th>
+        </tr>
+      </thead>
+      <tbody>
+    {% for species_row, outlist_row, big_drop in zip(species, outlist, big_drops) %}
       {% if species_row is string and 'CURRENT GA' in species_row %}
         <tr>
           <td>Consensus structure</td>
@@ -61,11 +64,11 @@
           <td>&nbsp;</td>
         </tr>
         <tr class="table-success" id="gathering-cutoff">
-          <td colspan="5" class="lead"><strong>{{ species_row }}</strong><td>
+          <td colspan="5" class="lead"><strong>✅ {{ species_row }}</strong><td>
         </tr>
       {% elif species_row is string and 'BEST REVERSED in species_row' %}
         <tr class="table-danger" id="best-reversed-hit">
-          <td colspan="5" class="lead"><strong>{{ species_row }}</strong><td>
+          <td colspan="5" class="lead"><strong>🛑 {{ species_row }}</strong><td>
         </tr>
       {% else %}
       <tr>
@@ -76,7 +79,9 @@
             <a href="https://www.ncbi.nlm.nih.gov/nuccore/{{ species_row.name }}?report=docsum&log$=seqview" target="_blank">{{ species_row.name }}</a>
           {% endif %}
         </td>
-        <td data-toggle="tooltip" data-placement="top" title="E-value {{ outlist_row.evalue }}"><strong>{{ species_row.bits }}</strong></td>
+        <td data-toggle="tooltip" data-placement="top" title="{% if big_drop %} ⚠️ Bit score drop > 10 ⚠️ {% endif %} E-value {{ outlist_row.evalue }}" {% if big_drop %} class="table-danger"{% endif %}>
+          <strong>{{ species_row.bits }}</strong>
+        </td>
         {% if species_row.seqLabel == 'SEED' %}
           <td><span class="badge badge-success">{{ species_row.seqLabel }}</span></td>
         {% else %}
@@ -101,9 +106,10 @@
             &nbsp;
           {% endif %}
         </td>
-        <td style="white-space: nowrap;" class="small">
+        <td style="white-space: nowrap;">
           <span data-toggle="tooltip" data-placement="left" title="{{ species_row.species }}">
-            {{ species_row.taxString }}
+            {{ get_emoji(species_row.taxString) }}
+            <a class="small" href="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id={{ species_row.ncbiId }}" target="_blank">{{ species_row.taxString }}</a>
           </span>
         </td>
       </tr>
@@ -116,6 +122,7 @@
         <td class="text-monospace"><strong>{{ ss_cons }}</strong></td>
         <td>&nbsp;</td>
       </tr>
+      </tbody>
     </table>
 
 

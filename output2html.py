@@ -1,6 +1,10 @@
+# -*- coding: utf-8 -*-
+
 import os
 import re
+import sys
 
+import emoji
 from jinja2 import Environment, FileSystemLoader
 
 
@@ -106,23 +110,68 @@ def parse_outlist(filename):
     return outlist
 
 
-def write_html(species, align, ss_cons, outlist, family, ga_threshold, best_reversed):
+def get_emoji(tax_string):
+    mapping = {
+        'Primates': ':monkey_face:',
+        'Viridiplantae': ':herb:',
+        'Mollusca': ':oyster:',
+        'Suidae': ':pig:',
+        'Camelidae': ':camel:',
+        'Bovinae': ':cow_face:',
+        'Equidae': ':horse_face:',
+        'Canidae': ':dog_face:',
+        'Rodentia': ':mouse:',
+        'Erinaceidae': ':hedgehog:',
+        'Chiroptera': ':bat:',
+        'Felinae': ':cat_face:',
+        'Bacteria': ':microbe:',
+        'Ailuropoda': ':panda_face:',
+        'Proboscidea': ':elephant:',
+        'Ovis': ':ewe:',
+    }
+    found = False
+    for taxon, emoji_string in mapping.iteritems():
+        if taxon in tax_string:
+            return emoji.emojize(emoji_string)
+    if not found:
+        return ''
+
+
+def detect_bit_score_drops(outlist):
+    big_drop = [False] * len(outlist)
+    previous = float(outlist[0]['bits'])
+    for i, entry in enumerate(outlist):
+        current = float(entry['bits'])
+        if previous - current > 10:
+            big_drop[i] = True
+        previous = current
+    return big_drop
+
+
+def write_html(data_path, species, align, ss_cons, outlist, family, ga_threshold, best_reversed, big_drops):
     env = Environment(
         loader=FileSystemLoader(os.path.dirname(os.path.realpath(__file__)))
     )
     env.globals.update(zip=zip)
+    env.globals['get_emoji'] = get_emoji
     template = env.get_template('template.html')
-    with open('output.html', 'w') as f_out:
-        f_out.write(template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, family=family))
+    with open(os.path.join(data_path, 'output.html'), 'w') as f_out:
+        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, family=family, big_drops=big_drops)
+        f_out.write(output.encode('utf-8'))
 
 
-def main():
-    species, ga_threshold, best_reversed = parse_species('MIPF0000219__mir-484_relabelled/species')
+def main(data_path):
+    basename = os.path.basename(data_path)
+    species, ga_threshold, best_reversed = parse_species(os.path.join(data_path, 'species'))
     # align, ss_cons = parse_align('MIPF0000219__mir-484_relabelled/align')
-    align, ss_cons = parse_align_with_seed('MIPF0000219__mir-484_relabelled/align-with-seed')
-    outlist = parse_outlist('MIPF0000219__mir-484_relabelled/outlist')
-    # import pdb; pdb.set_trace()
-    write_html(species, align, ss_cons, outlist, 'MIPF0000219__mir-484', ga_threshold, best_reversed)
+
+    cmd = 'esl-reformat pfam {} > {}'.format(os.path.join(data_path, 'align-with-seed'), os.path.join(data_path, 'align-with-seed-pfam'))
+    os.system(cmd)
+
+    align, ss_cons = parse_align_with_seed(os.path.join(data_path, 'align-with-seed-pfam'))
+    outlist = parse_outlist(os.path.join(data_path, 'outlist'))
+    big_drops = detect_bit_score_drops(outlist)
+    write_html(data_path, species, align, ss_cons, outlist, basename, ga_threshold, best_reversed, big_drops)
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1])
