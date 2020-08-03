@@ -61,9 +61,14 @@ def parse_align(filename):
     return align, ss_cons
 
 
-def parse_align_with_seed(filename):
+def parse_align_with_seed(data_path):
+    align_with_seed = os.path.join(data_path, 'align-with-seed')
+    align_with_seed_pfam = os.path.join(data_path, 'align-with-seed-pfam')
+    if not os.path.exists(align_with_seed_pfam):
+        cmd = 'esl-reformat pfam {} > {}'.format(align_with_seed, align_with_seed_pfam)
+        os.system(cmd)
     align = dict()
-    with open(filename, 'r') as f_in:
+    with open(align_with_seed_pfam, 'r') as f_in:
         for line in f_in:
             if line.startswith('#=GC SS_cons'):
                 _, _, ss_cons = re.split(r'\s+', line.strip())
@@ -169,7 +174,7 @@ def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_
     env.globals.update(zip=zip)
     env.globals['get_emoji'] = get_emoji
     template = env.get_template('template.html')
-    with open(os.path.join(data_path, 'output.html'), 'w') as f_out:
+    with open(os.path.join(data_path, '{}.html'.format(family)), 'w') as f_out:
         output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, rf_line=rf_line, family=family, big_drops=big_drops, seed_nts=seed_nts)
         f_out.write(output.encode('utf-8'))
 
@@ -179,14 +184,11 @@ def main(data_path):
     species, ga_threshold, best_reversed = parse_species(os.path.join(data_path, 'species'))
     # align, ss_cons = parse_align('MIPF0000219__mir-484_relabelled/align')
 
-    cmd = 'esl-reformat pfam {} > {}'.format(os.path.join(data_path, 'align-with-seed'), os.path.join(data_path, 'align-with-seed-pfam'))
-    os.system(cmd)
-
-    align, ss_cons, rf_line = parse_align_with_seed(os.path.join(data_path, 'align-with-seed-pfam'))
+    align, ss_cons, rf_line = parse_align_with_seed(data_path)
     outlist = parse_outlist(os.path.join(data_path, 'outlist'))
     big_drops = detect_bit_score_drops(outlist)
     seed_nts = get_seed_nts(align, outlist)
-    write_html(data_path, species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, seed_nts)
+    write_html('output', species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, seed_nts)
 
 
 if __name__ == '__main__':
