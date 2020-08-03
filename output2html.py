@@ -65,6 +65,8 @@ def parse_align_with_seed(filename):
         for line in f_in:
             if line.startswith('#=GC SS_cons'):
                 _, _, ss_cons = re.split(r'\s+', line.strip())
+            if line.startswith('#=GC RF'):
+                _, _, rf_line = re.split(r'\s+', line.strip())
             if line.startswith('#') or len(line) < 50:
                 continue
             name, sequence = re.split(r'\s+', line.strip())
@@ -72,7 +74,7 @@ def parse_align_with_seed(filename):
                 'sequence': sequence,
                 'sequence_split': list(sequence),
             }
-    return align, ss_cons
+    return align, ss_cons, rf_line
 
 
 def parse_outlist(filename):
@@ -148,7 +150,7 @@ def detect_bit_score_drops(outlist):
     return big_drop
 
 
-def write_html(data_path, species, align, ss_cons, outlist, family, ga_threshold, best_reversed, big_drops):
+def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, best_reversed, big_drops):
     env = Environment(
         loader=FileSystemLoader(os.path.dirname(os.path.realpath(__file__)))
     )
@@ -156,7 +158,7 @@ def write_html(data_path, species, align, ss_cons, outlist, family, ga_threshold
     env.globals['get_emoji'] = get_emoji
     template = env.get_template('template.html')
     with open(os.path.join(data_path, 'output.html'), 'w') as f_out:
-        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, family=family, big_drops=big_drops)
+        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, rf_line=rf_line, family=family, big_drops=big_drops)
         f_out.write(output.encode('utf-8'))
 
 
@@ -168,10 +170,11 @@ def main(data_path):
     cmd = 'esl-reformat pfam {} > {}'.format(os.path.join(data_path, 'align-with-seed'), os.path.join(data_path, 'align-with-seed-pfam'))
     os.system(cmd)
 
-    align, ss_cons = parse_align_with_seed(os.path.join(data_path, 'align-with-seed-pfam'))
+    align, ss_cons, rf_line = parse_align_with_seed(os.path.join(data_path, 'align-with-seed-pfam'))
     outlist = parse_outlist(os.path.join(data_path, 'outlist'))
     big_drops = detect_bit_score_drops(outlist)
-    write_html(data_path, species, align, ss_cons, outlist, basename, ga_threshold, best_reversed, big_drops)
+    write_html(data_path, species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops)
+
 
 if __name__ == '__main__':
     main(sys.argv[1])
