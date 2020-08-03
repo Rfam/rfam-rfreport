@@ -4,6 +4,8 @@ import os
 import re
 import sys
 
+from collections import defaultdict
+
 import emoji
 from jinja2 import Environment, FileSystemLoader
 
@@ -150,7 +152,17 @@ def detect_bit_score_drops(outlist):
     return big_drop
 
 
-def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, best_reversed, big_drops):
+def get_seed_nts(align, outlist):
+    seed_nts = defaultdict(set)
+    for row in outlist:
+        if row['seqLabel'] == 'SEED':
+            sequence = align[row['seq_name']]['sequence_split']
+            for i, nt in enumerate(sequence):
+                seed_nts[i].add(nt)
+    return seed_nts
+
+
+def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, best_reversed, big_drops, seed_nts):
     env = Environment(
         loader=FileSystemLoader(os.path.dirname(os.path.realpath(__file__)))
     )
@@ -158,7 +170,7 @@ def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_
     env.globals['get_emoji'] = get_emoji
     template = env.get_template('template.html')
     with open(os.path.join(data_path, 'output.html'), 'w') as f_out:
-        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, rf_line=rf_line, family=family, big_drops=big_drops)
+        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, rf_line=rf_line, family=family, big_drops=big_drops, seed_nts=seed_nts)
         f_out.write(output.encode('utf-8'))
 
 
@@ -173,7 +185,8 @@ def main(data_path):
     align, ss_cons, rf_line = parse_align_with_seed(os.path.join(data_path, 'align-with-seed-pfam'))
     outlist = parse_outlist(os.path.join(data_path, 'outlist'))
     big_drops = detect_bit_score_drops(outlist)
-    write_html(data_path, species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops)
+    seed_nts = get_seed_nts(align, outlist)
+    write_html(data_path, species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, seed_nts)
 
 
 if __name__ == '__main__':

@@ -36,10 +36,12 @@
 
       <button class="btn btn-outline-success btn-sm" onclick="document.getElementById('gathering-cutoff').scrollIntoView({behavior: 'smooth'})">✅ Gathering cutoff</button>
       <button class="btn btn-outline-danger btn-sm" onclick="document.getElementById('best-reversed-hit').scrollIntoView({behavior: 'smooth'})">🛑 Best reversed</button>
-      <button class="btn btn-outline-dark btn-sm" onclick="document.getElementById('last-hit').scrollIntoView({behavior: 'smooth'})">Last hit</button>
+      <!-- <button class="btn btn-outline-dark btn-sm" onclick="document.getElementById('last-hit').scrollIntoView({behavior: 'smooth'})">Last hit</button> -->
+      <button class="btn btn-outline-dark btn-sm" id="toggle-columns">🎨 Toggle colours</button>
+      <span class="text-muted">A nucleotide is <span class="text-success">green</span> if it occurs in the seed or <span class="text-danger">red</span> otherwise</span>
 
       <p class="text-muted">
-        Try hovering over accession, bit score or taxonomic string to see more information
+        Try hovering over <em>accession</em>, <em>bit score</em> or <em>taxonomic string</em> to see more information
       </p>
     </div>
 
@@ -53,10 +55,24 @@
           <th>&nbsp;</th>
         </tr>
         <tr>
-          <td><strong>Seed consensus sequence</strong></td>
+          <td><strong>Seed consensus</strong></td>
           <td>&nbsp;</td>
           <td>&nbsp;</td>
-          <td class="text-monospace"><strong>{{ rf_line }}</strong></td>
+          <td class="text-monospace" style="display: inline-flex; font-weight: bold;">
+            {% for nt in rf_line %}
+              {% if nt.upper() == 'A' %}
+                <span class="adenine-inactive">A</span>
+              {% elif nt.upper() == 'G' %}
+                <span class="guanine-inactive">G</span>
+              {% elif nt.upper() == 'C' %}
+                <span class="cytosine-inactive">C</span>
+              {% elif nt.upper() == 'U' %}
+                <span class="uracil-inactive">U</span>
+              {% else %}
+                <span>{{ nt }}</span>
+              {% endif %}
+            {% endfor %}
+          </td>
           <td>&nbsp;</td>
         </tr>
       </thead>
@@ -94,17 +110,17 @@
         {% else %}
           <td class="text-muted">{{ species_row.seqLabel }}</td>
         {% endif %}
-        <td class="text-monospace" style="display: inline-flex; {% if species_row.seqLabel == 'SEED' %}font-weight: bold;{% endif %}>"
+        <td class="text-monospace" style="display: inline-flex; {% if species_row.seqLabel == 'SEED' %}font-weight: bold;{% endif %}">
           {% if outlist_row.seq_name in align %}
             {% for nt in align[outlist_row.seq_name].sequence_split %}
               {% if nt == 'A' %}
-                <span class="adenine">A</span>
+                <span class="adenine-inactive {% if nt in seed_nts[loop.index0] %}text-success{% else %}text-danger{% endif %}">A</span>
               {% elif nt == 'G' %}
-                <span class="guanine">G</span>
+                <span class="guanine-inactive {% if nt in seed_nts[loop.index0] %}text-success{% else %}text-danger{% endif %}">G</span>
               {% elif nt == 'C' %}
-                <span class="cytosine">C</span>
+                <span class="cytosine-inactive {% if nt in seed_nts[loop.index0] %}text-success{% else %}text-danger{% endif %}">C</span>
               {% elif nt == 'U' %}
-                <span class="uracil">U</span>
+                <span class="uracil-inactive {% if nt in seed_nts[loop.index0] %}text-success{% else %}text-danger{% endif %}">U</span>
               {% else %}
                 <span>{{ nt }}</span>
               {% endif %}
@@ -142,6 +158,20 @@
       $(function () {
         $('[data-toggle="tooltip"]').tooltip()
       })
+      $('#toggle-columns').on('click', function(e) {
+        if ($('.uracil').length) {
+          $('.adenine').toggleClass("adenine adenine-inactive");
+          $('.guanine').toggleClass("guanine guanine-inactive");
+          $('.cytosine').toggleClass("cytosine cytosine-inactive");
+          $('.uracil').toggleClass("uracil uracil-inactive");
+        } else {
+          $('.adenine-inactive').toggleClass("adenine-inactive adenine");
+          $('.guanine-inactive').toggleClass("guanine-inactive guanine");
+          $('.cytosine-inactive').toggleClass("cytosine-inactive cytosine");
+          $('.uracil-inactive').toggleClass("uracil-inactive uracil");
+        }
+        e.preventDefault();
+      });
     </script>
   </body>
 </html>
