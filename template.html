@@ -21,10 +21,16 @@
         background-color: rgb(118, 208, 233);
       }
       .cytosine {
-        background-color: rgb(255, 247, 61);
+        background-color: rgb(131, 236, 149);
+      }
+      .mature {
+        background-color: green;
       }
       .table td {
         padding: 0 5px;
+      }
+      .table {
+        font-size: 11px;
       }
     </style>
 
@@ -38,10 +44,11 @@
       <button class="btn btn-outline-danger btn-sm" onclick="document.getElementById('best-reversed-hit').scrollIntoView({behavior: 'smooth'})">🛑 Best reversed</button>
       <!-- <button class="btn btn-outline-dark btn-sm" onclick="document.getElementById('last-hit').scrollIntoView({behavior: 'smooth'})">Last hit</button> -->
       <button class="btn btn-outline-dark btn-sm" id="toggle-columns">🎨 Toggle colours</button>
-      <span class="text-muted">A nucleotide is <span class="text-success">green</span> if it occurs in the seed or <span class="text-danger">red</span> otherwise</span>
+      <span class="text-muted">A nucleotide is <span class="text-success">green</span> if it occurs in the seed or <span class="text-danger">red</span> otherwise</span>.
+      <span class="text-success mature">Mature</span> nucleotides are highlighted in seed sequences.
 
       <p class="text-muted">
-        Try hovering over <em>accession</em>, <em>bit score</em> or <em>taxonomic string</em> to see more information
+        Hover over <em>accession</em>, <em>bit score</em> or <em>taxonomic string</em> to see more information
       </p>
     </div>
 
@@ -97,16 +104,18 @@
       <tr>
         <td style="white-space: nowrap;" class="small" data-toggle="tooltip" data-placement="right" title="{{ outlist_row.description }}">
           {% if species_row.name.startswith('URS00') %}
-            <a href="https://rnacentral.org/rna/{{ outlist_row.urs_taxid }}" target="_blank">{{ species_row.name }}</a>
+            <a href="https://rnacentral.org/rna/{{ outlist_row.urs_taxid }}" target="_blank">{{ species_row.name }}</a> ({{ outlist_row.str }})
           {% else %}
-            <a href="https://www.ncbi.nlm.nih.gov/nuccore/{{ species_row.name }}?report=docsum&log$=seqview" target="_blank">{{ species_row.name }}</a>
+            <a href="https://www.ncbi.nlm.nih.gov/nuccore/{{ species_row.name }}?report=docsum&log$=seqview" target="_blank">{{ species_row.name }}/{{ outlist_row.start }}-{{ outlist_row.end }}</a> ({{ outlist_row.str }})
           {% endif %}
         </td>
         <td data-toggle="tooltip" data-placement="top" title="{% if big_drop %} ⚠️ Bit score drop > 10 ⚠️ {% endif %} E-value {{ outlist_row.evalue }}" {% if big_drop %} class="table-danger"{% endif %}>
           <strong>{{ species_row.bits }}</strong>
         </td>
-        {% if species_row.seqLabel == 'SEED' %}
+        {% if species_row.seqLabel == 'SEED' and outlist_row.str != '-' %}
           <td><span class="badge badge-success">{{ species_row.seqLabel }}</span></td>
+        {% elif species_row.seqLabel == 'SEED' and outlist_row.str == '-' %}
+          <td data-toggle="tooltip" data-placement="top" title="⚠️ Reversed match ⚠️"><span class="badge badge-danger" >{{ species_row.seqLabel }}</span></td>
         {% else %}
           <td class="text-muted">{{ species_row.seqLabel }}</td>
         {% endif %}
@@ -114,13 +123,13 @@
           {% if outlist_row.seq_name in align %}
             {% for nt in align[outlist_row.seq_name].sequence_split %}
               {% if nt == 'A' %}
-                <span class="adenine-inactive {% if nt in seed_nts[loop.index0] %}text-success{% else %}text-danger{% endif %}">A</span>
+                <span class="adenine-inactive {% if nt in seed_nts[loop.index0] %}text-success{% else %}text-danger{% endif %} {% if outlist_row.urs_taxid in mature_mirnas and mature_mirnas[outlist_row.urs_taxid][loop.index0] == 1 %}mature{% endif %}">A</span>
               {% elif nt == 'G' %}
-                <span class="guanine-inactive {% if nt in seed_nts[loop.index0] %}text-success{% else %}text-danger{% endif %}">G</span>
+                <span class="guanine-inactive {% if nt in seed_nts[loop.index0] %}text-success{% else %}text-danger{% endif %} {% if outlist_row.urs_taxid in mature_mirnas and mature_mirnas[outlist_row.urs_taxid][loop.index0] == 1 %}mature{% endif %}">G</span>
               {% elif nt == 'C' %}
-                <span class="cytosine-inactive {% if nt in seed_nts[loop.index0] %}text-success{% else %}text-danger{% endif %}">C</span>
+                <span class="cytosine-inactive {% if nt in seed_nts[loop.index0] %}text-success{% else %}text-danger{% endif %} {% if outlist_row.urs_taxid in mature_mirnas and mature_mirnas[outlist_row.urs_taxid][loop.index0] == 1 %}mature{% endif %}">C</span>
               {% elif nt == 'U' %}
-                <span class="uracil-inactive {% if nt in seed_nts[loop.index0] %}text-success{% else %}text-danger{% endif %}">U</span>
+                <span class="uracil-inactive {% if nt in seed_nts[loop.index0] %}text-success{% else %}text-danger{% endif %} {% if outlist_row.urs_taxid in mature_mirnas and mature_mirnas[outlist_row.urs_taxid][loop.index0] == 1 %}mature{% endif %}">U</span>
               {% else %}
                 <span>{{ nt }}</span>
               {% endif %}

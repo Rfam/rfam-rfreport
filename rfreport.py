@@ -30,6 +30,8 @@ def parse_species(filename):
                 continue
             tabbed_line = re.sub(r'\s{2,}', '\t', line.strip())
             bits, evalue, seqLabel, name, overlap, ncbiId, species_name, extra, taxString = re.split('\t', tabbed_line)
+            if seqLabel == 'FULL-SEED':
+                continue
             species.append({
                 'bits': bits,
                 'evalue': evalue,
@@ -98,6 +100,8 @@ def parse_outlist(filename):
                 continue
             tabbed_line = re.sub(r'\s{2,}', '\t', line.strip())
             bits, evalue, seqLabel, name, overlap, start, end, str, qstart, qend, trunc, species, extra, description = re.split('\t', tabbed_line)
+            if seqLabel == 'FULL-SEED':
+                continue
             outlist.append({
                 'bits': bits,
                 'evalue': evalue,
@@ -119,6 +123,53 @@ def parse_outlist(filename):
     return outlist
 
 
+def parse_mature_mirna_file(filename):
+    """
+    Transform:
+    URS000000076D_6239	15	37	53	74
+    into:
+    [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74]
+    """
+    data = dict()
+    with open(filename, 'r') as f_in:
+        for line in f_in:
+            fields = line.strip().split('\t')
+            if (len(fields) - 1) % 2 != 0:
+                print('Unusual number of tabs found in line {}'.format(line))
+                continue
+            data[fields[0]] = []
+            flanks = [int(x) for x in fields[1:]]
+            while flanks:
+                right = flanks.pop()
+                left = flanks.pop()
+                data[fields[0]] += range(left, right + 1)
+    return data
+
+
+def get_mature_mirna_locations(mature_mirna, outlist, align):
+    data = dict()
+    for row in outlist:
+        if not row['urs_taxid']:
+            continue
+        aligned_sequence = align[row['seq_name']]['sequence']
+        mature_ids = mature_mirna[row['urs_taxid']]
+        matures = len(aligned_sequence) * [0]
+        m = re.match(r'URS\w{10}_\d+\/(\d+)-\d+', row['seq_name'])
+        if m:
+            urs_taxid_start = int(m.group(1))
+        else:
+            import pdb; pdb.set_trace()
+        seq_id = -1
+        for i, nt in enumerate(aligned_sequence):
+            if nt.upper() in ['A', 'C', 'G', 'U']:
+                seq_id += 1
+                if seq_id + urs_taxid_start - 1 in mature_ids:
+                    matures[i] = 1
+        data[row['urs_taxid']] = matures
+        # import pdb; pdb.set_trace()
+    return data
+
+
 def get_emoji(tax_string):
     mapping = {
         'Primates': ':monkey_face:',
@@ -137,6 +188,9 @@ def get_emoji(tax_string):
         'Ailuropoda': ':panda_face:',
         'Proboscidea': ':elephant:',
         'Ovis': ':ewe:',
+        'Xenopodinae': ':frog:',
+        'Aves': ':bird:',
+        'Insecta': ':cricket:',
     }
     found = False
     for taxon, emoji_string in mapping.iteritems():
@@ -161,13 +215,16 @@ def get_seed_nts(align, outlist):
     seed_nts = defaultdict(set)
     for row in outlist:
         if row['seqLabel'] == 'SEED':
-            sequence = align[row['seq_name']]['sequence_split']
+            try:
+                sequence = align[row['seq_name']]['sequence_split']
+            except:
+                import pdb; pdb.set_trace()
             for i, nt in enumerate(sequence):
                 seed_nts[i].add(nt)
     return seed_nts
 
 
-def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, best_reversed, big_drops, seed_nts):
+def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, best_reversed, big_drops, seed_nts, mature_mirnas):
     env = Environment(
         loader=FileSystemLoader(os.path.dirname(os.path.realpath(__file__)))
     )
@@ -175,7 +232,7 @@ def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_
     env.globals['get_emoji'] = get_emoji
     template = env.get_template('template.html')
     with open(os.path.join(data_path, '{}.html'.format(family)), 'w') as f_out:
-        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, rf_line=rf_line, family=family, big_drops=big_drops, seed_nts=seed_nts)
+        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, rf_line=rf_line, family=family, big_drops=big_drops, seed_nts=seed_nts, mature_mirnas=mature_mirnas)
         f_out.write(output.encode('utf-8'))
 
 
@@ -188,7 +245,9 @@ def main(data_path):
     outlist = parse_outlist(os.path.join(data_path, 'outlist'))
     big_drops = detect_bit_score_drops(outlist)
     seed_nts = get_seed_nts(align, outlist)
-    write_html('output', species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, seed_nts)
+    mature_mirna_reference = parse_mature_mirna_file('mature-mirna.tsv')
+    mature_mirnas = get_mature_mirna_locations(mature_mirna_reference, outlist, align)
+    write_html('output', species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, seed_nts, mature_mirnas)
 
 
 if __name__ == '__main__':
