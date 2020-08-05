@@ -120,7 +120,7 @@ def parse_outlist(filename):
                 'seq_name': name if name.startswith('URS00') else '{}/{}-{}'.format(name, start, end),
                 'urs_taxid': re.sub(r'\/.+', '', name) if name.startswith('URS00') else '',
             })
-    return outlist
+    return outlist[:300]
 
 
 def parse_mature_mirna_file(filename):
@@ -232,7 +232,7 @@ def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_
     env.globals['get_emoji'] = get_emoji
     template = env.get_template('template.html')
     with open(os.path.join(data_path, '{}.html'.format(family)), 'w') as f_out:
-        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, rf_line=rf_line, family=family, big_drops=big_drops, seed_nts=seed_nts, mature_mirnas=mature_mirnas)
+        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, ss_cons_split=list(ss_cons), rf_line=rf_line, family=family, big_drops=big_drops, seed_nts=seed_nts, mature_mirnas=mature_mirnas)
         f_out.write(output.encode('utf-8'))
 
 
