@@ -64,11 +64,20 @@ def parse_align(filename):
 
 
 def parse_align_with_seed(data_path):
+    align = os.path.join(data_path, 'align')
     align_with_seed = os.path.join(data_path, 'align-with-seed')
     align_with_seed_pfam = os.path.join(data_path, 'align-with-seed-pfam')
+
+    if not os.path.exists(align):
+        cmd = 'cd {} && rfmake.pl -t 25 -a -forcethr'.format(data_path)
+        os.system(cmd)
+    if not os.path.exists(align_with_seed):
+        cmd = 'cd {} && esl-reformat fasta align | cmalign --mapali SEED CM - > align-with-seed'
+        os.system(cmd.format(data_path))
     if not os.path.exists(align_with_seed_pfam):
         cmd = 'esl-reformat pfam {} > {}'.format(align_with_seed, align_with_seed_pfam)
         os.system(cmd)
+
     align = dict()
     with open(align_with_seed_pfam, 'r') as f_in:
         for line in f_in:
