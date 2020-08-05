@@ -188,7 +188,7 @@ def get_emoji(tax_string):
         'Ailuropoda': ':panda_face:',
         'Proboscidea': ':elephant:',
         'Ovis': ':ewe:',
-        'Xenopodinae': ':frog:',
+        'Xenopodinae': ':frog_face:',
         'Aves': ':bird:',
         'Insecta': ':cricket:',
     }
