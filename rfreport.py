@@ -106,6 +106,14 @@ def parse_outlist(filename):
     outlist = []
     with open(filename, 'r') as f_in:
         for line in f_in:
+            m = re.search(r'CURRENT GA THRESHOLD: (.+) BITS', line)
+            if m:
+                outlist.append(m.group(0))
+                continue
+            m = re.search(r'BEST REVERSED HIT E-VALUE: (.+) ', line)
+            if m:
+                outlist.append(m.group(0))
+                continue
             if line.startswith('#'):
                 continue
             tabbed_line = re.sub(r'\s{2,}', '\t', line.strip())
@@ -159,7 +167,7 @@ def parse_mature_mirna_file(filename):
 def get_mature_mirna_locations(mature_mirna, outlist, align):
     data = dict()
     for row in outlist:
-        if not row['urs_taxid']:
+        if not isinstance(row, dict) or not row['urs_taxid']:
             continue
         aligned_sequence = align[row['seq_name']]['sequence']
         mature_ids = mature_mirna[row['urs_taxid']]
@@ -176,7 +184,6 @@ def get_mature_mirna_locations(mature_mirna, outlist, align):
                 if seq_id + urs_taxid_start - 1 in mature_ids:
                     matures[i] = 1
         data[row['urs_taxid']] = matures
-        # import pdb; pdb.set_trace()
     return data
 
 
@@ -214,7 +221,8 @@ def detect_bit_score_drops(outlist):
     big_drop = [False] * len(outlist)
     previous = float(outlist[0]['bits'])
     for i, entry in enumerate(outlist):
-        current = float(entry['bits'])
+        if 'bits' in entry:
+            current = float(entry['bits'])
         if previous - current > 10:
             big_drop[i] = True
         previous = current
@@ -224,7 +232,7 @@ def detect_bit_score_drops(outlist):
 def get_seed_nts(align, outlist):
     seed_nts = defaultdict(set)
     for row in outlist:
-        if row['seqLabel'] == 'SEED':
+        if 'seqLabel' in row and row['seqLabel'] == 'SEED':
             try:
                 sequence = align[row['seq_name']]['sequence_split']
             except:
