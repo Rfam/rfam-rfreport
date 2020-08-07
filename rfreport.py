@@ -42,6 +42,7 @@ def parse_species(filename):
                 'species': species_name,
                 'extra': extra,
                 'taxString': taxString,
+                'tax_string_split': [x.strip().replace('.', '') for x in taxString.split(';')],
             })
     return species, ga_threshold, best_reversed
 
@@ -233,7 +234,16 @@ def get_seed_nts(align, outlist):
     return seed_nts
 
 
-def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, best_reversed, big_drops, seed_nts, mature_mirnas):
+def process_tax_string(species):
+    seed_taxa = set()
+    for row in species:
+        if 'seqLabel' in row and row['seqLabel'] == 'SEED':
+            fields = row['taxString'].split(';')
+            [seed_taxa.add(x.strip().replace('.', '')) for x in fields]
+    return seed_taxa
+
+
+def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, best_reversed, big_drops, seed_nts, mature_mirnas, seed_taxa):
     env = Environment(
         loader=FileSystemLoader(os.path.dirname(os.path.realpath(__file__)))
     )
@@ -241,7 +251,7 @@ def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_
     env.globals['get_emoji'] = get_emoji
     template = env.get_template('template.html')
     with open(os.path.join(data_path, '{}.html'.format(family)), 'w') as f_out:
-        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, ss_cons_split=list(ss_cons), rf_line=rf_line, family=family, big_drops=big_drops, seed_nts=seed_nts, mature_mirnas=mature_mirnas)
+        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, ss_cons_split=list(ss_cons), rf_line=rf_line, family=family, big_drops=big_drops, seed_nts=seed_nts, mature_mirnas=mature_mirnas, seed_taxa=seed_taxa)
         f_out.write(output.encode('utf-8'))
 
 
@@ -256,7 +266,8 @@ def main(data_path):
     seed_nts = get_seed_nts(align, outlist)
     mature_mirna_reference = parse_mature_mirna_file('mature-mirna.tsv')
     mature_mirnas = get_mature_mirna_locations(mature_mirna_reference, outlist, align)
-    write_html('output', species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, seed_nts, mature_mirnas)
+    seed_taxa = process_tax_string(species)
+    write_html('output', species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, seed_nts, mature_mirnas, seed_taxa)
 
 
 if __name__ == '__main__':

@@ -151,7 +151,13 @@
         <td style="white-space: nowrap;">
           <span data-toggle="tooltip" data-placement="left" title="{{ species_row.species }}">
             {{ get_emoji(species_row.taxString) }}
-            <a class="small" href="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id={{ species_row.ncbiId }}" target="_blank">{{ species_row.taxString }}</a>
+            <a class="small" href="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id={{ species_row.ncbiId }}" target="_blank">
+              {% for taxon in species_row.tax_string_split %}
+                  <span class="{% if taxon in seed_taxa %}text-success{% else %}text-danger{% endif %}">
+                    {{ taxon }}{% if not loop.last %};{% endif %}
+                  </span>
+              {% endfor %}
+            </a>
           </span>
         </td>
       </tr>
