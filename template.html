@@ -147,7 +147,7 @@
         {% else %}
           <td class="text-muted">{{ species_row.seqLabel }}</td>
         {% endif %}
-        <td class="text-monospace" style="display: inline-flex; {% if species_row.seqLabel == 'SEED' %}font-weight: bold;{% endif %}">
+        <td class="text-monospace sequence" style="display: inline-flex; {% if species_row.seqLabel == 'SEED' %}font-weight: bold;{% endif %}">
           {% if outlist_row.seq_name in align %}
             {% for nt in align[outlist_row.seq_name].sequence_split %}
               {% if nt == 'A' %}

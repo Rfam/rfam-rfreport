@@ -37,27 +37,28 @@ rfmake = function(threshold){
 
 ralee_conservation = function(threshold){
   reset_ralee_conservation();
-  // find rows above threshold
+  // find visible rows
   var show_up_to = null;
-  $("tr").each(function(row_index) {
-    $this = $(this);
-    var td = $this.find(".bit_score");
-    if (td.length > 0) {
-      var bit_score = parseFloat($(td).html());
-      if (bit_score && bit_score >= threshold) {
-        show_up_to = row_index;
-      } else {
-        return false;
-      }
+  var table_rows = $("tr>.sequence");
+  table_rows.each(function(row_index) {
+    if ($(this).is(':visible')) {
+      show_up_to = row_index;
+    } else {
+      return false;
     }
   });
 
   // analyse conservation
-  var alignment_length = $($("tr>td.text-monospace")[1]).find('span').length;
+  var alignment_length = $('.sequence').first().find('span').length;
+  // starting at 1 because nth-child is 1-based
   for (var i = 1; i <= alignment_length; i++) {
-    var column = $('tr>td.text-monospace>span:nth-child(' + i + ')');
+    var column = $('.sequence>span:nth-child(' + i + ')')
+    if (!$(column[0]).is(':visible')) {
+      continue;
+    }
+
     var guanine = 1, adenine = 1, cytosine = 1, uracil = 1, other = 1;
-    for (var j = 2; j <= show_up_to; j++) {
+    for (var j = 0; j <= show_up_to; j++) {
       var nt = column[j].innerHTML;
 
       if (nt === 'G' || nt === 'g') {
@@ -99,7 +100,7 @@ ralee_conservation = function(threshold){
       to_paint = 'Uu';
     }
 
-    for (var j = 2; j <= show_up_to; j++) {
+    for (var j = 0; j <= show_up_to; j++) {
       var nt = column[j].innerHTML;
       if (to_paint.indexOf(nt) === -1) {
         continue;
@@ -131,12 +132,9 @@ $(function () {
   });
 
   $('#set-threshold').on('click', function() {
-      var old_title = document.title;
-      document.title = 'Setting threshold...';
       var threshold = parseFloat($('#ga_threshold').val());
       reset_ralee_conservation();
       rfmake(threshold);
-      document.title = old_title;
   });
 
   $('#reset-threshold').on('click', function() {
