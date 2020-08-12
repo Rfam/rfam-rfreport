@@ -24,7 +24,6 @@
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
 
-
     <script>
       var spData = null;
 
@@ -55,8 +54,7 @@
     	  for(var c=0; c<rowData.length; c++) {
           if (c == 0 && rowData[c]) {
             rowData[c] = '<a href="http://preview.rfam.org/microrna/' + rowData[c] + '.html">' + rowData[c] + '</a>';
-          }
-          if (c == 1 && rowData[c]) {
+          } else if (c == 1 && parseFloat(rowData[c]) > 0) {
             rowData[c] = '✅ &nbsp;' + rowData[c];
           }
     		  drawCell(tr, rowData[c]);
@@ -66,6 +64,7 @@
 
       function drawTable(parent) {
     	  var table = $("<table/>");
+        table.append('<thead><tr><th>Family</th><th>Score</th><th>Author</th></tr></thead>');
     	  parent.append(table);
     	  return table;
       }
@@ -81,6 +80,9 @@
               if (cell.col == 1) {
                   drawRow(table, rowData);
                   rowData = [];
+              }
+              if (cell.col > 3) {
+                continue;
               }
               rowData.push(val);
           }
