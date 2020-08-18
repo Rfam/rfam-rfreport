@@ -74,10 +74,10 @@ def parse_align_with_seed(data_path):
     if not os.path.exists(align):
         cmd = 'cd {} && rfmake.pl -t 30 -a -forcethr -relax'.format(data_path)
         os.system(cmd)
-    if not os.path.exists(align_with_seed):
+    if not os.path.exists(align_with_seed) or os.stat(align_with_seed).st_size == 0:
         cmd = 'cd {} && esl-reformat fasta align | cmalign --mapali SEED CM - > align-with-seed'
         os.system(cmd.format(data_path))
-    if not os.path.exists(align_with_seed_pfam):
+    if not os.path.exists(align_with_seed_pfam) or os.stat(align_with_seed_pfam).st_size == 0:
         cmd = 'esl-reformat pfam {} > {}'.format(align_with_seed, align_with_seed_pfam)
         os.system(cmd)
 
