@@ -6,6 +6,8 @@ import sys
 
 from collections import defaultdict
 
+
+import click
 import emoji
 from jinja2 import Environment, FileSystemLoader
 
@@ -261,32 +263,35 @@ def process_tax_string(species):
     return seed_taxa
 
 
-def write_html(data_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, best_reversed, big_drops, seed_nts, mature_mirnas, seed_taxa):
+def write_html(output_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, best_reversed, big_drops, seed_nts, mature_mirnas, seed_taxa):
     env = Environment(
         loader=FileSystemLoader(os.path.dirname(os.path.realpath(__file__)))
     )
     env.globals.update(zip=zip)
     env.globals['get_emoji'] = get_emoji
     template = env.get_template('template.html')
-    with open(os.path.join(data_path, '{}.html'.format(family)), 'w') as f_out:
+    with open(os.path.join(output_path, '{}.html'.format(family)), 'w') as f_out:
         output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, ss_cons_split=list(ss_cons), rf_line=rf_line, family=family, big_drops=big_drops, seed_nts=seed_nts, mature_mirnas=mature_mirnas, seed_taxa=seed_taxa)
         f_out.write(output.encode('utf-8'))
 
 
-def main(data_path):
-    basename = os.path.basename(data_path)
-    species, ga_threshold, best_reversed = parse_species(os.path.join(data_path, 'species'))
+@click.command()
+@click.option('--input_path', type=click.Path(exists=True), help='Path to input files')
+@click.option('--output_path', type=click.Path(exists=True), default='output', help='Path to output folder')
+def main(input_path, output_path):
+    basename = os.path.basename(input_path)
+    species, ga_threshold, best_reversed = parse_species(os.path.join(input_path, 'species'))
     # align, ss_cons = parse_align('MIPF0000219__mir-484_relabelled/align')
 
-    align, ss_cons, rf_line = parse_align_with_seed(data_path)
-    outlist = parse_outlist(os.path.join(data_path, 'outlist'))
+    align, ss_cons, rf_line = parse_align_with_seed(input_path)
+    outlist = parse_outlist(os.path.join(input_path, 'outlist'))
     big_drops = detect_bit_score_drops(outlist)
     seed_nts = get_seed_nts(align, outlist)
     mature_mirna_reference = parse_mature_mirna_file('mature-mirna.tsv')
     mature_mirnas = get_mature_mirna_locations(mature_mirna_reference, outlist, align)
     seed_taxa = process_tax_string(species)
-    write_html('output', species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, seed_nts, mature_mirnas, seed_taxa)
+    write_html(output_path, species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, seed_nts, mature_mirnas, seed_taxa)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main()

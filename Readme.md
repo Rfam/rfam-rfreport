@@ -13,5 +13,5 @@ pip install -r requirements.txt
 ## Usage
 
 ```
-python rfreport.py <path_to_rfsearch_output>
+python rfreport.py --input_path <path_to_rfsearch_output> --output_path <path_to_output_folder>
 ```
