@@ -98,7 +98,7 @@ def parse_align_with_seed(data_path):
     return align, ss_cons, rf_line
 
 
-def parse_outlist(filename):
+def parse_outlist(filename, maxhits):
     """
     # bits  evalue   seqLabel  name                      overlap  start      end        str  qstart  qend  trunc  species                            extra                  description
     #=====  =======  ========  ========================  =======  =========  =========  ===  ======  ====  =====  =================================  =====================  ==========================================================================================================
@@ -150,7 +150,7 @@ def parse_outlist(filename):
                 'seq_name': seq_name,
                 'urs_taxid': re.sub(r'\/.+', '', name) if name.startswith('URS00') else '',
             })
-    return outlist[:300]
+    return outlist[:maxhits]
 
 
 def parse_mature_mirna_file(filename):
@@ -270,21 +270,24 @@ def write_html(output_path, species, align, ss_cons, rf_line, outlist, family, g
     env.globals.update(zip=zip)
     env.globals['get_emoji'] = get_emoji
     template = env.get_template('template.html')
-    with open(os.path.join(output_path, '{}.html'.format(family)), 'w') as f_out:
+    output_file = os.path.join(output_path, '{}.html'.format(family))
+    with open(output_file, 'w') as f_out:
         output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, ss_cons_split=list(ss_cons), rf_line=rf_line, family=family, big_drops=big_drops, seed_nts=seed_nts, mature_mirnas=mature_mirnas, seed_taxa=seed_taxa)
         f_out.write(output.encode('utf-8'))
-
+    print('Created file {}'.format(output_file))
 
 @click.command()
 @click.option('--input_path', type=click.Path(exists=True), help='Path to input files')
 @click.option('--output_path', type=click.Path(exists=True), default='output', help='Path to output folder')
-def main(input_path, output_path):
+@click.option('--maxhits', default=300, required=False, help='Maximum number of hits to output')
+def main(input_path, output_path, maxhits):
+    print('Processing files in {}'.format(input_path))
     basename = os.path.basename(input_path)
     species, ga_threshold, best_reversed = parse_species(os.path.join(input_path, 'species'))
     # align, ss_cons = parse_align('MIPF0000219__mir-484_relabelled/align')
 
     align, ss_cons, rf_line = parse_align_with_seed(input_path)
-    outlist = parse_outlist(os.path.join(input_path, 'outlist'))
+    outlist = parse_outlist(os.path.join(input_path, 'outlist'), maxhits)
     big_drops = detect_bit_score_drops(outlist)
     seed_nts = get_seed_nts(align, outlist)
     mature_mirna_reference = parse_mature_mirna_file('mature-mirna.tsv')
