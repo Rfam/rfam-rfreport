@@ -183,6 +183,8 @@ def get_mature_mirna_locations(mature_mirna, outlist, align):
     for row in outlist:
         if not isinstance(row, dict) or not row['urs_taxid']:
             continue
+        if row['urs_taxid'] not in mature_mirna:
+            continue
         aligned_sequence = align[row['seq_name']]['sequence']
         mature_ids = mature_mirna[row['urs_taxid']]
         matures = len(aligned_sequence) * [0]
