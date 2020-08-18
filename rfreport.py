@@ -124,6 +124,12 @@ def parse_outlist(filename):
                 description = ''
             if seqLabel == 'FULL-SEED':
                 continue
+            if name.startswith('URS00'):
+                seq_name = name
+            elif not re.match(r'^(\S+)\/(\d+)\-(\d+)\s*', name):
+                seq_name = '{}/{}-{}'.format(name, start, end)
+            else:
+                seq_name = name
             outlist.append({
                 'bits': bits,
                 'evalue': evalue,
@@ -139,7 +145,7 @@ def parse_outlist(filename):
                 'species': species,
                 'extra': extra,
                 'description': description,
-                'seq_name': name if name.startswith('URS00') else '{}/{}-{}'.format(name, start, end),
+                'seq_name': seq_name,
                 'urs_taxid': re.sub(r'\/.+', '', name) if name.startswith('URS00') else '',
             })
     return outlist[:300]
