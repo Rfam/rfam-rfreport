@@ -91,6 +91,8 @@ def parse_align_with_seed(data_path):
             if line.startswith('#') or len(line) < 50:
                 continue
             name, sequence = re.split(r'\s+', line.strip())
+            if re.search(r'^\d+\|', name):
+                name = re.sub(r'^\d+\|', '', name)
             align[name] = {
                 'sequence': sequence,
                 'sequence_split': list(sequence),
