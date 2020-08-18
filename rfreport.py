@@ -277,7 +277,7 @@ def write_html(output_path, species, align, ss_cons, rf_line, outlist, family, g
     print('Created file {}'.format(output_file))
 
 @click.command()
-@click.option('--input_path', type=click.Path(exists=True), help='Path to input files')
+@click.argument('input_path', type=click.Path(exists=True))
 @click.option('--output_path', type=click.Path(exists=True), default='output', help='Path to output folder')
 @click.option('--maxhits', default=300, required=False, help='Maximum number of hits to output')
 def main(input_path, output_path, maxhits):
