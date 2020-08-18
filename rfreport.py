@@ -117,7 +117,11 @@ def parse_outlist(filename):
             if line.startswith('#'):
                 continue
             tabbed_line = re.sub(r'\s{2,}', '\t', line.strip())
-            bits, evalue, seqLabel, name, overlap, start, end, str, qstart, qend, trunc, species, extra, description = re.split('\t', tabbed_line)
+            try:
+                bits, evalue, seqLabel, name, overlap, start, end, str, qstart, qend, trunc, species, extra, description = re.split('\t', tabbed_line)
+            except:
+                bits, evalue, seqLabel, name, overlap, start, end, str, qstart, qend, trunc, species, extra = re.split('\t', tabbed_line)
+                description = ''
             if seqLabel == 'FULL-SEED':
                 continue
             outlist.append({
