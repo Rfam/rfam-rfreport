@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # -*- coding: utf-8 -*-
 
 import os
@@ -66,17 +68,17 @@ def parse_align(filename):
     return align, ss_cons
 
 
-def parse_align_with_seed(data_path):
-    align = os.path.join(data_path, 'align')
-    align_with_seed = os.path.join(data_path, 'align-with-seed')
-    align_with_seed_pfam = os.path.join(data_path, 'align-with-seed-pfam')
+def parse_align_with_seed(data_path, threshold):
+    align = os.path.join(data_path, 'align-{}'.format(threshold))
+    align_with_seed = os.path.join(data_path, 'align-with-seed-{}'.format(threshold))
+    align_with_seed_pfam = os.path.join(data_path, 'align-with-seed-pfam-{}'.format(threshold))
 
     if not os.path.exists(align):
-        cmd = 'cd {} && rfmake.pl -t 30 -a -forcethr -relax'.format(data_path)
+        cmd = 'cd {} && rfmake.pl -t {} -a -forcethr -relax && cp align {}'.format(data_path, threshold, align)
         os.system(cmd)
     if not os.path.exists(align_with_seed) or os.stat(align_with_seed).st_size == 0:
-        cmd = 'cd {} && esl-reformat fasta align | cmalign --mapali SEED CM - > align-with-seed'
-        os.system(cmd.format(data_path))
+        cmd = 'cd {} && esl-reformat fasta {} | cmalign --mapali SEED CM - > {}'
+        os.system(cmd.format(data_path, align, align_with_seed))
     if not os.path.exists(align_with_seed_pfam) or os.stat(align_with_seed_pfam).st_size == 0:
         cmd = 'esl-reformat pfam {} > {}'.format(align_with_seed, align_with_seed_pfam)
         os.system(cmd)
@@ -252,7 +254,9 @@ def get_seed_nts(align, outlist):
             try:
                 sequence = align[row['seq_name']]['sequence_split']
             except:
-                import pdb; pdb.set_trace()
+                print('Error: {} not found in align data'.format(row['seq_name']))
+                continue
+                # import pdb; pdb.set_trace()
             for i, nt in enumerate(sequence):
                 seed_nts[i].add(nt)
     return seed_nts
@@ -283,14 +287,15 @@ def write_html(output_path, species, align, ss_cons, rf_line, outlist, family, g
 @click.command()
 @click.argument('input_path', type=click.Path(exists=True))
 @click.option('--output_path', type=click.Path(exists=True), default='output', help='Path to output folder')
-@click.option('--maxhits', default=300, required=False, help='Maximum number of hits to output')
-def main(input_path, output_path, maxhits):
+@click.option('--maxhits', default=300, required=False, type=int, show_default=True, help='Maximum number of hits to output')
+@click.option('-t', '--threshold', default=30, required=False, type=int, show_default=True, help='Gathering threshold')
+def main(input_path, output_path, maxhits, threshold):
     print('Processing files in {}'.format(input_path))
     basename = os.path.basename(input_path)
     species, ga_threshold, best_reversed = parse_species(os.path.join(input_path, 'species'))
     # align, ss_cons = parse_align('MIPF0000219__mir-484_relabelled/align')
 
-    align, ss_cons, rf_line = parse_align_with_seed(input_path)
+    align, ss_cons, rf_line = parse_align_with_seed(input_path, threshold)
     outlist = parse_outlist(os.path.join(input_path, 'outlist'), maxhits)
     big_drops = detect_bit_score_drops(outlist)
     seed_nts = get_seed_nts(align, outlist)
