@@ -291,7 +291,7 @@ def write_html(output_path, species, align, ss_cons, rf_line, outlist, family, g
 @click.option('-t', '--threshold', default=30, required=False, type=int, show_default=True, help='Gathering threshold')
 def main(input_path, output_path, maxhits, threshold):
     print('Processing files in {}'.format(input_path))
-    basename = os.path.basename(input_path)
+    basename = os.path.basename(os.path.normpath(input_path))
     species, ga_threshold, best_reversed = parse_species(os.path.join(input_path, 'species'))
     # align, ss_cons = parse_align('MIPF0000219__mir-484_relabelled/align')
 
