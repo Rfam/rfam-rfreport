@@ -12,6 +12,10 @@ from collections import defaultdict
 import click
 import emoji
 from jinja2 import Environment, FileSystemLoader
+import requests
+
+
+rnacentral_metadata = {}
 
 
 def parse_species(filename):
@@ -36,6 +40,11 @@ def parse_species(filename):
             bits, evalue, seqLabel, name, overlap, ncbiId, species_name, extra, taxString = re.split('\t', tabbed_line)
             if seqLabel == 'FULL-SEED':
                 continue
+            if name.startswith('URS00'):
+                seq_name = name
+                urs_taxid = re.sub(r'\/.+', '', name) if name.startswith('URS00') else ''
+                taxString, _, species_name = get_rnacentral_metadata(urs_taxid)
+                ncbiId = urs_taxid.split('_')[1]
             species.append({
                 'bits': bits,
                 'evalue': evalue,
@@ -69,6 +78,8 @@ def parse_align(filename):
 
 
 def parse_align_with_seed(data_path, threshold):
+    ss_cons = ''
+    rf_line = ''
     align = os.path.join(data_path, 'align-{}'.format(threshold))
     align_with_seed = os.path.join(data_path, 'align-with-seed-{}'.format(threshold))
     align_with_seed_pfam = os.path.join(data_path, 'align-with-seed-pfam-{}'.format(threshold))
@@ -133,8 +144,10 @@ def parse_outlist(filename, maxhits):
                 description = ''
             if seqLabel == 'FULL-SEED':
                 continue
-            if name.startswith('URS00'):
+            urs_taxid = re.sub(r'\/.+', '', name) if name.startswith('URS00') else ''
+            if urs_taxid:
                 seq_name = name
+                _, description, species = get_rnacentral_metadata(urs_taxid)
             elif not re.match(r'^(\S+)\/(\d+)\-(\d+)\s*', name):
                 seq_name = '{}/{}-{}'.format(name, start, end)
             else:
@@ -157,7 +170,7 @@ def parse_outlist(filename, maxhits):
                 'extra': extra,
                 'description': description,
                 'seq_name': seq_name,
-                'urs_taxid': re.sub(r'\/.+', '', name) if name.startswith('URS00') else '',
+                'urs_taxid': urs_taxid,
             })
     print('Found {} hits below reversed'.format(num_hits_below_reversed))
     return outlist[:maxhits], num_hits_below_reversed
@@ -209,6 +222,26 @@ def get_mature_mirna_locations(mature_mirna, outlist, align):
                     matures[i] = 1
         data[row['urs_taxid']] = matures
     return data
+
+
+def get_rnacentral_metadata(urs_taxid):
+    url = 'http://www.ebi.ac.uk/ebisearch/ws/rest/rnacentral?query={}&fields=description,tax_string,species&format=json'
+    if urs_taxid in rnacentral_metadata:
+        return rnacentral_metadata[urs_taxid]
+    tax_string = ''
+    description = ''
+    species = ''
+    try:
+        data = requests.get(url.format(urs_taxid))
+        print('fetching {}'.format(urs_taxid))
+        if data.json()['hitCount'] == 1:
+            tax_string = data.json()['entries'][0]['fields']['tax_string'][0]
+            description = data.json()['entries'][0]['fields']['description'][0]
+            species = data.json()['entries'][0]['fields']['species'][0]
+            rnacentral_metadata[urs_taxid] = (tax_string, description, species)
+    except:
+        print('Error fetching metadata for {}'.format(urs_taxid))
+    return (tax_string, description, species)
 
 
 def get_emoji(tax_string):
@@ -313,6 +346,7 @@ def write_html(output_path, species, align, ss_cons, rf_line, outlist, family, g
         output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, ss_cons_split=list(ss_cons), rf_line=rf_line, family=family, big_drops=big_drops, outlist_skip=outlist_skip, seed_nts=seed_nts, mature_mirnas=mature_mirnas, seed_taxa=seed_taxa)
         f_out.write(output.encode('utf-8'))
     print('Created file {}'.format(output_file))
+
 
 @click.command()
 @click.argument('input_path', type=click.Path(exists=True))
