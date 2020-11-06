@@ -8,6 +8,10 @@ import sys
 
 from collections import defaultdict
 
+# activate virtualenv
+folder_of_script = os.path.dirname(os.path.realpath(__file__))
+activate_script = os.path.join(folder_of_script, 'env', 'bin', 'activate_this.py')
+execfile(activate_script, dict(__file__=activate_script))
 
 import click
 import emoji
