@@ -346,6 +346,21 @@ def write_html(output_path, species, align, ss_cons, rf_line, outlist, family, g
         output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, ss_cons_split=list(ss_cons), rf_line=rf_line, family=family, big_drops=big_drops, outlist_skip=outlist_skip, seed_nts=seed_nts, mature_mirnas=mature_mirnas, seed_taxa=seed_taxa)
         f_out.write(output.encode('utf-8'))
     print('Created file {}'.format(output_file))
+    return output_file
+
+
+def minify_html(html_file):
+    if os.stat(html_file).st_size < 1048576: # 1Mb
+        return
+    unminified_html_file = html_file.replace('.html', '-unminified.html')
+    minified_html_file = html_file
+    os.rename(html_file, unminified_html_file)
+    cmd = 'htmlmin {} {}'.format(unminified_html_file, minified_html_file)
+    try:
+        print('Minifying html {}'.format(minified_html_file))
+        os.system(cmd)
+    except:
+        print('Minification failed')
 
 
 @click.command()
@@ -366,7 +381,8 @@ def main(input_path, output_path, maxhits, threshold):
     mature_mirna_reference = parse_mature_mirna_file('mature-mirna.tsv')
     mature_mirnas = get_mature_mirna_locations(mature_mirna_reference, outlist, align)
     seed_taxa = process_tax_string(species)
-    write_html(output_path, species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, outlist_skip, seed_nts, mature_mirnas, seed_taxa)
+    html_file = write_html(output_path, species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, outlist_skip, seed_nts, mature_mirnas, seed_taxa)
+    minify_html(html_file)
 
 
 if __name__ == '__main__':
