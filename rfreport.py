@@ -8,10 +8,18 @@ import sys
 
 from collections import defaultdict
 
+# activate virtualenv
+folder_of_script = os.path.dirname(os.path.realpath(__file__))
+activate_script = os.path.join(folder_of_script, 'env', 'bin', 'activate_this.py')
+execfile(activate_script, dict(__file__=activate_script))
 
 import click
 import emoji
 from jinja2 import Environment, FileSystemLoader
+import requests
+
+
+rnacentral_metadata = {}
 
 
 def parse_species(filename):
@@ -36,6 +44,11 @@ def parse_species(filename):
             bits, evalue, seqLabel, name, overlap, ncbiId, species_name, extra, taxString = re.split('\t', tabbed_line)
             if seqLabel == 'FULL-SEED':
                 continue
+            if name.startswith('URS00'):
+                seq_name = name
+                urs_taxid = re.sub(r'\/.+', '', name) if name.startswith('URS00') else ''
+                taxString, _, species_name = get_rnacentral_metadata(urs_taxid)
+                ncbiId = urs_taxid.split('_')[1]
             species.append({
                 'bits': bits,
                 'evalue': evalue,
@@ -69,12 +82,14 @@ def parse_align(filename):
 
 
 def parse_align_with_seed(data_path, threshold):
+    ss_cons = ''
+    rf_line = ''
     align = os.path.join(data_path, 'align-{}'.format(threshold))
     align_with_seed = os.path.join(data_path, 'align-with-seed-{}'.format(threshold))
     align_with_seed_pfam = os.path.join(data_path, 'align-with-seed-pfam-{}'.format(threshold))
 
     if not os.path.exists(align):
-        cmd = 'cd {} && rfmake.pl -t {} -a -forcethr -relax && cp align {}'.format(data_path, threshold, align)
+        cmd = 'cd {} && rfmake.pl -t {} -local -a -forcethr -relax && cp align {}'.format(data_path, threshold, align)
         os.system(cmd)
     if not os.path.exists(align_with_seed) or os.stat(align_with_seed).st_size == 0:
         cmd = 'cd {} && esl-reformat fasta {} | cmalign --mapali SEED CM - > {}'
@@ -110,6 +125,8 @@ def parse_outlist(filename, maxhits):
       98.3  1.1e-17  FULL      CM000330.3                      -   15864341   15864407    +       1    67     no  Pan_troglodytes_(chimpa..[9598]    GA:A;RV:A;SO:N[0.000]  Pan troglodytes isolate Yerkes chimp pedigree #C0471 (Clint) chromosome 16, whole genome shotgun sequence.
     """
     outlist = []
+    found_hits_below_reversed = False
+    num_hits_below_reversed = 0
     with open(filename, 'r') as f_in:
         for line in f_in:
             m = re.search(r'CURRENT GA THRESHOLD: (.+) BITS', line)
@@ -119,6 +136,7 @@ def parse_outlist(filename, maxhits):
             m = re.search(r'BEST REVERSED HIT E-VALUE: (.+) ', line)
             if m:
                 outlist.append(m.group(0))
+                found_hits_below_reversed = True
                 continue
             if line.startswith('#'):
                 continue
@@ -130,12 +148,16 @@ def parse_outlist(filename, maxhits):
                 description = ''
             if seqLabel == 'FULL-SEED':
                 continue
-            if name.startswith('URS00'):
+            urs_taxid = re.sub(r'\/.+', '', name) if name.startswith('URS00') else ''
+            if urs_taxid:
                 seq_name = name
+                _, description, species = get_rnacentral_metadata(urs_taxid)
             elif not re.match(r'^(\S+)\/(\d+)\-(\d+)\s*', name):
                 seq_name = '{}/{}-{}'.format(name, start, end)
             else:
                 seq_name = name
+            if found_hits_below_reversed:
+                num_hits_below_reversed += 1
             outlist.append({
                 'bits': bits,
                 'evalue': evalue,
@@ -152,9 +174,10 @@ def parse_outlist(filename, maxhits):
                 'extra': extra,
                 'description': description,
                 'seq_name': seq_name,
-                'urs_taxid': re.sub(r'\/.+', '', name) if name.startswith('URS00') else '',
+                'urs_taxid': urs_taxid,
             })
-    return outlist[:maxhits]
+    print('Found {} hits below reversed'.format(num_hits_below_reversed))
+    return outlist[:maxhits], num_hits_below_reversed
 
 
 def parse_mature_mirna_file(filename):
@@ -203,6 +226,26 @@ def get_mature_mirna_locations(mature_mirna, outlist, align):
                     matures[i] = 1
         data[row['urs_taxid']] = matures
     return data
+
+
+def get_rnacentral_metadata(urs_taxid):
+    url = 'http://www.ebi.ac.uk/ebisearch/ws/rest/rnacentral?query={}&fields=description,tax_string,species&format=json'
+    if urs_taxid in rnacentral_metadata:
+        return rnacentral_metadata[urs_taxid]
+    tax_string = ''
+    description = ''
+    species = ''
+    try:
+        data = requests.get(url.format(urs_taxid))
+        print('fetching {}'.format(urs_taxid))
+        if data.json()['hitCount'] == 1:
+            tax_string = data.json()['entries'][0]['fields']['tax_string'][0]
+            description = data.json()['entries'][0]['fields']['description'][0]
+            species = data.json()['entries'][0]['fields']['species'][0]
+            rnacentral_metadata[urs_taxid] = (tax_string, description, species)
+    except:
+        print('Error fetching metadata for {}'.format(urs_taxid))
+    return (tax_string, description, species)
 
 
 def get_emoji(tax_string):
@@ -271,7 +314,31 @@ def process_tax_string(species):
     return seed_taxa
 
 
-def write_html(output_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, best_reversed, big_drops, seed_nts, mature_mirnas, seed_taxa):
+def process_large_outlist(outlist, num_hits_below_reversed):
+    outlist_skip = [0] * len(outlist)
+    if num_hits_below_reversed < 50:
+        return outlist_skip
+    species = set()
+    below_reversed = False
+    for i, row in enumerate(outlist):
+        if isinstance(row, basestring):
+            if row.startswith('BEST REVERSED'):
+                below_reversed = True
+            continue
+        if not below_reversed:
+            continue
+        elif row['seqLabel'] == 'SEED':
+            continue
+        else:
+            if row['species'] not in species:
+                species.add(row['species'])
+            else:
+                outlist_skip[i] = 1
+    print('Hiding {} hits below reversed'.format(outlist_skip.count(1)))
+    return outlist_skip
+
+
+def write_html(output_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, best_reversed, big_drops, outlist_skip, seed_nts, mature_mirnas, seed_taxa):
     env = Environment(
         loader=FileSystemLoader(os.path.dirname(os.path.realpath(__file__)))
     )
@@ -280,29 +347,46 @@ def write_html(output_path, species, align, ss_cons, rf_line, outlist, family, g
     template = env.get_template('template.html')
     output_file = os.path.join(output_path, '{}.html'.format(family))
     with open(output_file, 'w') as f_out:
-        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, ss_cons_split=list(ss_cons), rf_line=rf_line, family=family, big_drops=big_drops, seed_nts=seed_nts, mature_mirnas=mature_mirnas, seed_taxa=seed_taxa)
+        output = template.render(species=species, outlist=outlist, align=align, ss_cons=ss_cons, ss_cons_split=list(ss_cons), rf_line=rf_line, family=family, big_drops=big_drops, outlist_skip=outlist_skip, seed_nts=seed_nts, mature_mirnas=mature_mirnas, seed_taxa=seed_taxa)
         f_out.write(output.encode('utf-8'))
     print('Created file {}'.format(output_file))
+    return output_file
+
+
+def minify_html(html_file):
+    if os.stat(html_file).st_size < 1048576: # 1Mb
+        return
+    unminified_html_file = html_file.replace('.html', '-unminified.html')
+    minified_html_file = html_file
+    os.rename(html_file, unminified_html_file)
+    cmd = 'htmlmin {} {}'.format(unminified_html_file, minified_html_file)
+    try:
+        print('Minifying html {}'.format(minified_html_file))
+        os.system(cmd)
+    except:
+        print('Minification failed')
+
 
 @click.command()
 @click.argument('input_path', type=click.Path(exists=True))
 @click.option('--output_path', type=click.Path(exists=True), default='output', help='Path to output folder')
-@click.option('--maxhits', default=300, required=False, type=int, show_default=True, help='Maximum number of hits to output')
+@click.option('--maxhits', default=100000, required=False, type=int, show_default=True, help='Maximum number of hits to output')
 @click.option('-t', '--threshold', default=30, required=False, type=int, show_default=True, help='Gathering threshold')
 def main(input_path, output_path, maxhits, threshold):
     print('Processing files in {}'.format(input_path))
     basename = os.path.basename(os.path.normpath(input_path))
     species, ga_threshold, best_reversed = parse_species(os.path.join(input_path, 'species'))
-    # align, ss_cons = parse_align('MIPF0000219__mir-484_relabelled/align')
 
     align, ss_cons, rf_line = parse_align_with_seed(input_path, threshold)
-    outlist = parse_outlist(os.path.join(input_path, 'outlist'), maxhits)
+    outlist, num_hits_below_reversed = parse_outlist(os.path.join(input_path, 'outlist'), maxhits)
+    outlist_skip = process_large_outlist(outlist, num_hits_below_reversed)
     big_drops = detect_bit_score_drops(outlist)
     seed_nts = get_seed_nts(align, outlist)
     mature_mirna_reference = parse_mature_mirna_file('mature-mirna.tsv')
     mature_mirnas = get_mature_mirna_locations(mature_mirna_reference, outlist, align)
     seed_taxa = process_tax_string(species)
-    write_html(output_path, species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, seed_nts, mature_mirnas, seed_taxa)
+    html_file = write_html(output_path, species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, outlist_skip, seed_nts, mature_mirnas, seed_taxa)
+    minify_html(html_file)
 
 
 if __name__ == '__main__':

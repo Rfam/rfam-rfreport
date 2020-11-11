@@ -119,16 +119,22 @@
           </td>
           <td>&nbsp;</td>
         </tr>
-    {% for species_row, outlist_row, big_drop in zip(species, outlist, big_drops) %}
+    {% for species_row, outlist_row, big_drop, skip in zip(species, outlist, big_drops, outlist_skip) %}
       {% if species_row is string and 'CURRENT GA' in species_row %}
         <tr class="table-success" id="gathering-cutoff">
           <td colspan="5" class="lead"><strong>✅ {{ species_row }}</strong><td>
         </tr>
       {% elif species_row is string and 'BEST REVERSED in species_row' %}
         <tr class="table-danger" id="best-reversed-hit">
-          <td colspan="5" class="lead"><strong>🛑 {{ species_row }}</strong><td>
+          <td colspan="5" class="lead">
+            <strong>🛑 {{ species_row }}</strong>
+            {% set num_hidden = outlist_skip | select("equalto", 1) | list | count %}
+            {% if num_hidden > 0 %}
+            <strong style="margin-left: 15px;">☠️ {{ num_hidden }}</strong> entries below reversed hidden (showing only the top scoring hit from each species)
+            {% endif %}
+          <td>
         </tr>
-      {% else %}
+      {% elif skip != 1 %}
       <tr>
         <td style="white-space: nowrap;" class="small" data-toggle="tooltip" data-placement="right" title="{{ outlist_row.description }}">
           {% if species_row.name.startswith('URS00') %}
