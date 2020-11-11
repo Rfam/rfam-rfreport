@@ -370,7 +370,7 @@ def minify_html(html_file):
 @click.command()
 @click.argument('input_path', type=click.Path(exists=True))
 @click.option('--output_path', type=click.Path(exists=True), default='output', help='Path to output folder')
-@click.option('--maxhits', default=300, required=False, type=int, show_default=True, help='Maximum number of hits to output')
+@click.option('--maxhits', default=100000, required=False, type=int, show_default=True, help='Maximum number of hits to output')
 @click.option('-t', '--threshold', default=30, required=False, type=int, show_default=True, help='Gathering threshold')
 def main(input_path, output_path, maxhits, threshold):
     print('Processing files in {}'.format(input_path))
