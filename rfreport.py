@@ -188,7 +188,7 @@ def parse_mature_mirna_file(filename):
     [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74]
     """
     data = dict()
-    with open(filename, 'r') as f_in:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), filename), 'r') as f_in:
         for line in f_in:
             fields = line.strip().split('\t')
             if (len(fields) - 1) % 2 != 0:
