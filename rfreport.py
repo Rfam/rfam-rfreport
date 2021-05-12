@@ -26,7 +26,8 @@ rnacentral_metadata = {}
 def parse_species(filename):
     species = []
     ga_threshold = None
-    best_reversed = None
+    best_reversed_bit_score = None
+    record_bit_score = False
     with open(filename, 'r') as f_in:
         for line in f_in:
             m = re.search(r'CURRENT GA THRESHOLD: (.+) BITS', line)
@@ -36,8 +37,8 @@ def parse_species(filename):
                 continue
             m = re.search(r'BEST REVERSED HIT E-VALUE: (.+) ', line)
             if m:
-                best_reversed = m.group(1)
                 species.append(m.group(0))
+                record_bit_score = True
                 continue
             if line.startswith('#'):
                 continue
@@ -50,6 +51,9 @@ def parse_species(filename):
                 urs_taxid = re.sub(r'\/.+', '', name) if name.startswith('URS00') else ''
                 taxString, _, species_name = get_rnacentral_metadata(urs_taxid)
                 ncbiId = urs_taxid.split('_')[1]
+            if record_bit_score:
+                best_reversed_bit_score = float(bits)
+                record_bit_score = False
             species.append({
                 'bits': bits,
                 'evalue': evalue,
@@ -62,7 +66,7 @@ def parse_species(filename):
                 'taxString': taxString,
                 'tax_string_split': [x.strip().replace('.', '') for x in taxString.split(';')],
             })
-    return species, ga_threshold, best_reversed
+    return species, ga_threshold, best_reversed_bit_score
 
 
 def parse_align(filename):
@@ -340,7 +344,7 @@ def process_large_outlist(outlist, num_hits_below_reversed):
     return outlist_skip
 
 
-def write_html(output_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, best_reversed, big_drops, outlist_skip, seed_nts, mature_mirnas, seed_taxa):
+def write_html(output_path, species, align, ss_cons, rf_line, outlist, family, ga_threshold, big_drops, outlist_skip, seed_nts, mature_mirnas, seed_taxa):
     env = Environment(
         loader=FileSystemLoader(os.path.dirname(os.path.realpath(__file__)))
     )
@@ -408,12 +412,16 @@ def verify_species_file_exists(input_path):
 @click.option('--output_path', type=click.Path(exists=True), default='output', help='Path to output folder')
 @click.option('--maxhits', default=100000, required=False, type=int, show_default=True, help='Maximum number of hits to output')
 @click.option('-t', '--threshold', default=30, required=False, type=int, show_default=True, help='Gathering threshold')
-def main(input_path, output_path, maxhits, threshold):
+@click.option('--auto', is_flag=True, help='Set threshold automatically based on the BEST REVERSED score')
+def main(input_path, output_path, maxhits, threshold, auto):
     print('Processing files in {}'.format(input_path))
     basename = os.path.basename(os.path.normpath(input_path))
     verify_species_file_exists(input_path)
-    species, ga_threshold, best_reversed = parse_species(os.path.join(input_path, 'species'))
-
+    species, ga_threshold, best_reversed_bit_score = parse_species(os.path.join(input_path, 'species'))
+    if auto:
+        threshold = best_reversed_bit_score + 0.1
+        print('First hit below reversed: {}'.format(best_reversed_bit_score))
+        print('Automatically setting threshold at {} bits'.format(threshold))
     align, ss_cons, rf_line = parse_align_with_seed(input_path, threshold)
     outlist, num_hits_below_reversed = parse_outlist(os.path.join(input_path, 'outlist'), maxhits)
     align = normalise_align_names(align, outlist)
@@ -423,7 +431,7 @@ def main(input_path, output_path, maxhits, threshold):
     mature_mirna_reference = parse_mature_mirna_file('mature-mirna.tsv')
     mature_mirnas = get_mature_mirna_locations(mature_mirna_reference, outlist, align)
     seed_taxa = process_tax_string(species)
-    html_file = write_html(output_path, species, align, ss_cons, rf_line, outlist, basename, ga_threshold, best_reversed, big_drops, outlist_skip, seed_nts, mature_mirnas, seed_taxa)
+    html_file = write_html(output_path, species, align, ss_cons, rf_line, outlist, basename, ga_threshold, big_drops, outlist_skip, seed_nts, mature_mirnas, seed_taxa)
     minify_html(html_file)
 
 
