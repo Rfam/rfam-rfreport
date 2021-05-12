@@ -2,6 +2,7 @@
 
 # -*- coding: utf-8 -*-
 
+import datetime
 import os
 import re
 import sys
@@ -390,6 +391,18 @@ def normalise_align_names(align, outlist):
     return align
 
 
+def verify_species_file_exists(input_path):
+    species = os.path.join(input_path, 'species')
+    desc = os.path.join(input_path, 'DESC')
+    if not os.path.exists(species):
+        if os.path.exists(desc):
+            suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+            new_desc = "_".join([desc, suffix])
+            os.rename(desc, new_desc)
+        cmd = 'cd {} && rfsearch.pl -nodesc -cnompi -t 30 -ignoresm && cd -'.format(input_path)
+        os.system(cmd)
+
+
 @click.command()
 @click.argument('input_path', type=click.Path(exists=True))
 @click.option('--output_path', type=click.Path(exists=True), default='output', help='Path to output folder')
@@ -398,6 +411,7 @@ def normalise_align_names(align, outlist):
 def main(input_path, output_path, maxhits, threshold):
     print('Processing files in {}'.format(input_path))
     basename = os.path.basename(os.path.normpath(input_path))
+    verify_species_file_exists(input_path)
     species, ga_threshold, best_reversed = parse_species(os.path.join(input_path, 'species'))
 
     align, ss_cons, rf_line = parse_align_with_seed(input_path, threshold)
