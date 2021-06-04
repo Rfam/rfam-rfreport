@@ -409,11 +409,17 @@ def verify_species_file_exists(input_path):
 
 @click.command()
 @click.argument('input_path', type=click.Path(exists=True))
-@click.option('--output_path', type=click.Path(exists=True), default='output', help='Path to output folder')
+@click.option('--output_path', type=click.Path(), default=None, help='Path to output folder')
 @click.option('--maxhits', default=100000, required=False, type=int, show_default=True, help='Maximum number of hits to output')
 @click.option('-t', '--threshold', default=30, required=False, type=int, show_default=True, help='Gathering threshold')
 @click.option('--auto', is_flag=True, help='Set threshold automatically based on the BEST REVERSED score')
 def main(input_path, output_path, maxhits, threshold, auto):
+    if not output_path:
+        output_path_env_variable = 'RFAM_RFREPORT_OUTPUT_PATH'
+        output_path = str(os.getenv(output_path_env_variable))
+        if not os.path.exists(output_path):
+            print('Please specify a valid --output_path or set the ${} environment variable'.format(output_path_env_variable))
+            return
     print('Processing files in {}'.format(input_path))
     basename = os.path.basename(os.path.normpath(input_path))
     verify_species_file_exists(input_path)
