@@ -8,6 +8,7 @@ import re
 import sys
 
 from collections import defaultdict
+import xml.etree.ElementTree as ET
 
 # activate virtualenv
 folder_of_script = os.path.dirname(os.path.realpath(__file__))
@@ -46,8 +47,9 @@ def parse_species(filename):
             bits, evalue, seqLabel, name, overlap, ncbiId, species_name, extra, taxString = re.split('\t', tabbed_line)
             if seqLabel == 'FULL-SEED':
                 continue
+            if seqLabel == 'SEED' and taxString == '-':
+                taxString = fetch_tax_string(name)
             if name.startswith('URS00'):
-                seq_name = name
                 urs_taxid = re.sub(r'\/.+', '', name) if name.startswith('URS00') else ''
                 taxString, _, species_name = get_rnacentral_metadata(urs_taxid)
                 ncbiId = urs_taxid.split('_')[1]
@@ -84,6 +86,55 @@ def parse_align(filename):
                 'sequence_split': list(sequence),
             })
     return align, ss_cons
+
+
+def fetch_tax_id(accession):
+    """
+    Given a sequence accession, find its NCBI Taxonomy ID.
+    """
+    tax_id = None
+    if not accession:
+        return tax_id
+    url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&retmode=xml&rettype=docsum'
+    data = requests.get(url.format(accession))
+    if data.status_code == 200:
+        tree = ET.ElementTree(ET.fromstring(data.text))
+        taxid_element = tree.find('.//Item[@Name="TaxId"]')
+        if taxid_element is not None:
+            tax_id = taxid_element.text
+    return tax_id
+
+
+def fetch_lineage(tax_id):
+    """
+    Given an NCBI Taxonomy ID, fetch its lineage.
+    """
+    lineage = '-'
+    if not tax_id:
+        return lineage
+    url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=taxonomy&id={}&retmode=xml'
+    data = requests.get(url.format(tax_id))
+    if data.status_code == 200:
+        tree = ET.ElementTree(ET.fromstring(data.text))
+        lineage_element = tree.find('.//Lineage')
+        if lineage_element is not None:
+            lineage = lineage_element.text
+            print(lineage)
+    return lineage
+
+
+def fetch_tax_string(name):
+    """
+    Sometimes taxString is not available for an accession in the `species` file.
+    This function tries to fetch it from NCBI, if possible.
+    """
+    accession = None
+    if '/' in name:
+        parts = name.split('/')
+        accession = parts[0]
+    tax_id = fetch_tax_id(accession)
+    tax_string = fetch_lineage(tax_id)
+    return tax_string
 
 
 def parse_align_with_seed(data_path, threshold):
