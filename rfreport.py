@@ -236,7 +236,7 @@ def get_mature_mirna_locations(mature_mirna, outlist, align):
 
 
 def get_rnacentral_metadata(urs_taxid):
-    url = 'http://www.ebi.ac.uk/ebisearch/ws/rest/rnacentral?query={}&fields=description,tax_string,species&format=json'
+    url = 'http://www.ebi.ac.uk/ebisearch/ws/rest/rnacentral?query=entry_type:"sequence" AND "{}"%&fields=description,tax_string,species&format=json'
     if urs_taxid in rnacentral_metadata:
         return rnacentral_metadata[urs_taxid]
     tax_string = ''
