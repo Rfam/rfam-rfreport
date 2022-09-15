@@ -454,7 +454,7 @@ def verify_species_file_exists(input_path):
             suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
             new_desc = "_".join([desc, suffix])
             os.rename(desc, new_desc)
-        cmd = 'cd {} && rfsearch.pl -nodesc -cnompi -t 30 -ignoresm && cd -'.format(input_path)
+        cmd = 'cd {} && rfsearch.pl -nodesc -t 30 -ignoresm && cd -'.format(input_path)
         os.system(cmd)
 
 
