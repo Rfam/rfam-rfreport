@@ -98,7 +98,7 @@ def fetch_tax_id(accession):
     url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&retmode=xml&rettype=docsum'
     data = requests.get(url.format(accession))
     if data.status_code == 200:
-        tree = ET.ElementTree(ET.fromstring(data.text))
+        tree = ET.ElementTree(ET.fromstring(data.text.encode('utf-8')))
         taxid_element = tree.find('.//Item[@Name="TaxId"]')
         if taxid_element is not None:
             tax_id = taxid_element.text
