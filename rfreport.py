@@ -115,7 +115,7 @@ def fetch_lineage(tax_id):
     url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=taxonomy&id={}&retmode=xml'
     data = requests.get(url.format(tax_id))
     if data.status_code == 200:
-        tree = ET.ElementTree(ET.fromstring(data.text))
+        tree = ET.ElementTree(ET.fromstring(data.text.encode('utf-8')))
         lineage_element = tree.find('.//Lineage')
         if lineage_element is not None:
             lineage = lineage_element.text
