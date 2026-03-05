@@ -351,6 +351,7 @@ def detect_bit_score_drops(outlist):
     if not first_dict:
         return big_drop
     previous = float(first_dict['bits'])
+    current = previous
     for i, entry in enumerate(outlist):
         if 'bits' in entry:
             current = float(entry['bits'])
