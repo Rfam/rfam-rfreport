@@ -150,9 +150,15 @@ def parse_align_with_seed(data_path, threshold):
     if not os.path.exists(align_with_seed) or os.stat(align_with_seed).st_size == 0:
         cmd = 'cd {} && esl-reformat fasta {} | cmalign --mapali SEED CM - > {} && cd -'
         os.system(cmd.format(data_path, os.path.basename(align), os.path.basename(align_with_seed)))
+    if not os.path.exists(align_with_seed) or os.stat(align_with_seed).st_size == 0:
+        print('Warning: {} is empty after cmalign, skipping alignment'.format(align_with_seed))
+        return dict(), ss_cons, rf_line
     if not os.path.exists(align_with_seed_pfam) or os.stat(align_with_seed_pfam).st_size == 0:
         cmd = 'esl-reformat pfam {} > {}'.format(align_with_seed, align_with_seed_pfam)
         os.system(cmd)
+    if not os.path.exists(align_with_seed_pfam) or os.stat(align_with_seed_pfam).st_size == 0:
+        print('Warning: {} is empty after esl-reformat, skipping alignment'.format(align_with_seed_pfam))
+        return dict(), ss_cons, rf_line
 
     align = dict()
     with open(align_with_seed_pfam, 'r') as f_in:
@@ -268,6 +274,8 @@ def get_mature_mirna_locations(mature_mirna, outlist, align):
             continue
         if row['urs_taxid'] not in mature_mirna:
             continue
+        if row['seq_name'] not in align:
+            continue
         aligned_sequence = align[row['seq_name']]['sequence']
         mature_ids = mature_mirna[row['urs_taxid']]
         matures = len(aligned_sequence) * [0]
@@ -275,7 +283,8 @@ def get_mature_mirna_locations(mature_mirna, outlist, align):
         if m:
             urs_taxid_start = int(m.group(1))
         else:
-            import pdb; pdb.set_trace()
+            print('Warning: unexpected seq_name format, skipping mature miRNA for {}'.format(row['seq_name']))
+            continue
         seq_id = -1
         for i, nt in enumerate(aligned_sequence):
             if nt.upper() in ['A', 'C', 'G', 'U']:
@@ -300,7 +309,7 @@ def get_rnacentral_metadata(urs_taxid):
             tax_string = data.json()['entries'][0]['fields']['tax_string'][0]
             description = data.json()['entries'][0]['fields']['description'][0]
             species = data.json()['entries'][0]['fields']['species'][0]
-            rnacentral_metadata[urs_taxid] = (tax_string, description, species)
+        rnacentral_metadata[urs_taxid] = (tax_string, description, species)
     except:
         print('Error fetching metadata for {}'.format(urs_taxid))
     return (tax_string, description, species)
