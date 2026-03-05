@@ -347,7 +347,10 @@ def get_emoji(tax_string):
 
 def detect_bit_score_drops(outlist):
     big_drop = [False] * len(outlist)
-    previous = float(outlist[0]['bits'])
+    first_dict = next((e for e in outlist if isinstance(e, dict)), None)
+    if not first_dict:
+        return big_drop
+    previous = float(first_dict['bits'])
     for i, entry in enumerate(outlist):
         if 'bits' in entry:
             current = float(entry['bits'])
